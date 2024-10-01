@@ -1,0 +1,92 @@
+{
+  "verbose": 1,
+  "train_seed": 0,
+  "dtype": "float32",
+  "device": "cpu",
+  "fdim": 3,
+  "model_name": "gpt-neo-x-fdim-3:v2",
+  "nb_weights": "gpt-neo-x-fdim-3-NB:v0",
+  "dataset_name": "fdim-3:v3",
+  "train": {
+    "log_prefix": "train",
+    "log_every": 1000,
+    "dataset_filename": "train.pkl",
+    "dataset_size": null,
+    "nb_alpha": 0.5,
+    "max_epochs": 10000,
+    "epoch_length": null,
+    "batch_size": 32,
+    "save_milestones": [
+      0,
+      100000,
+      200000,
+      300000,
+      400000,
+      500000,
+      600000,
+      700000,
+      800000,
+      900000
+    ],
+    "save_last": true,
+    "save_last_every": 10000
+  },
+  "optimizer": {
+    "name": "AdamW",
+    "lr": 1e-06
+  },
+  "scheduler": {
+    "use": true,
+    "update_every": 10,
+    "start_lr": 1e-06,
+    "end_lr": 1e-07,
+    "warmup_duration": 20000,
+    "decay_duration": 200000,
+    "name": "LinearLR"
+  },
+  "gradient_clipping": {
+    "use": true,
+    "max_norm": 1.0
+  },
+  "validation": {
+    "log_prefix": "val",
+    "every": 1000,
+    "dataset_size": 0.1,
+    "batch_size": 16,
+    "epoch_length": 50
+  },
+  "inference": {
+    "test": {
+      "log_prefix": "test",
+      "dataset_filename": "test.pkl",
+      "dataset_size": null,
+      "every": 2000,
+      "batch_size": 16,
+      "epoch_length": null,
+      "max_shots": 5,
+      "save_best": false,
+      "save_dirname": "test",
+      "score_name": "completion_ratio_5",
+      "maximize": true,
+      "n_saved": 1
+    }
+  },
+  "generation": {
+    "max_length": 120,
+    "suppress_tokens": [
+      "[",
+      "]",
+      ",",
+      "y",
+      "n",
+      ":",
+      "<s>"
+    ],
+    "num_return_sequences": 5,
+    "do_sample": true
+  },
+  "ema": {
+    "use": true,
+    "update_every": 5
+  }
+}

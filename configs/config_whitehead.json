@@ -1,0 +1,61 @@
+{
+    "fdim": 2,
+    "verbose": 2,
+    "mlserver": 2,
+    "dataset_name": "fdim-2-whitehead:v0",
+    "model_name": "gpt-2-fdim-2:v3",
+    "device": "cuda",
+    "dtype": "float32",
+    "train": {
+      "max_epochs": 30,
+      "log_every": 50,
+      "batch_size": 128
+    },
+    "validation": {
+      "every": 500,
+      "log_every": 10,
+      "dataset_size": 0.01,
+      "epoch_length": 50
+    },
+    "inference": {
+      "dataset_filename": "test.pkl",
+      "every": 500,
+      "save_best": true,
+      "log_prefix": "test",
+      "dataset_size": 0.33,
+      "batch_size": 16,
+      "max_shots": 5,
+      "save_dirname": "test",
+      "score_name": "completion_ratio_intersection_5",
+      "maximize": true,
+      "n_saved": 1,
+      "prefix_length": 3
+    },
+    "optimizer": {
+      "lr": 5e-04,
+      "name": "Adam"
+    },
+    "gradient_clipping": {
+      "use": false,
+      "max_norm": 1.0
+    },
+    "scheduler": {
+      "name": "cosine",
+      "warmup_duration": 300,
+      "update_every": 10,
+      "decay_duration": 3500,
+      "start_lr": 5e-04,
+      "end_lr": 5e-05
+    },
+    "generation": {
+      "max_length": 50,
+      "suppress_tokens": [
+        "y",
+        "n",
+        ":",
+        "<s>"
+      ],
+      "num_return_sequences": 5,
+      "do_sample": true
+    }
+  }
