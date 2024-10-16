@@ -1,5 +1,6 @@
 import importlib.util
 import math
+import multiprocessing as mp
 import os
 import pickle
 import sys
@@ -87,11 +88,16 @@ def inverse(arr):
     arr = arr * (-1)
     return list(arr)[::-1]
 
-def max_gamma_metric(x, fdim=3, target_gamma=4, save_pos_examples=False):    
+def max_gamma_metric(x, fdim=3, target_gamma=4, save_pos_examples=False, n_proc=None):    
     # nontrivial = [-2, -1, 2, 1, -3, -2, -1, 2, 3, -2, 1, 2, -1, -3, -2, 1, 2, 3]
     # res = np.array([max_gamma_contains([normalize(inverse(nontrivial) + w)], fdim=fdim)[0] for w in x['outputs']])
+    if n_proc is not None and n_proc > 1:
+        with mp.Pool(n_proc) as pool:
+            results = pool.starmap(max_gamma_contains, [([normalize(w)], fdim, False) for w in x['outputs']])
+    else:
+        results = [max_gamma_contains([normalize(w)], fdim, keepdim=False) for w in x['outputs']]
 
-    res = np.array([max_gamma_contains([normalize(w)], fdim, keepdim=False) for w in x['outputs']])
+    res = np.array(results)
     if save_pos_examples:
         save_dir = './training_generated_words'
         Path(save_dir).mkdir(parents=False, exist_ok=True)

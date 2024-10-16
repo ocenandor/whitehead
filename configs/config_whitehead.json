@@ -9,21 +9,22 @@
     "train": {
       "max_epochs": 30,
       "log_every": 50,
-      "batch_size": 128
+      "batch_size": 1024
     },
     "validation": {
-      "every": 500,
+      "every": 10,
       "log_every": 10,
       "dataset_size": 0.01,
-      "epoch_length": 50
+      "epoch_length": 50,
+      "batch_size": 1024
     },
     "inference": {
       "dataset_filename": "test.pkl",
-      "every": 500,
+      "every": 10,
       "save_best": true,
       "log_prefix": "test",
       "dataset_size": 0.33,
-      "batch_size": 16,
+      "batch_size": 1536,
       "max_shots": 5,
       "save_dirname": "test",
       "score_name": "completion_ratio_intersection_5",

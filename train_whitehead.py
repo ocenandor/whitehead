@@ -83,7 +83,7 @@ validation_loader = DataLoader(
     shuffle=False, collate_fn=partial(train_collate_fn, tokenizer=tokenizer, fdim=config.fdim)
     )
 inference_loader = DataLoader(
-    test_dataset, batch_size=config.inference['batch_size'],
+    test_dataset, batch_size=config.inference['batch_size'], num_workers=1,
     shuffle=False, collate_fn=partial(train_collate_fn, tokenizer=tokenizer, fdim=config.fdim)
     )
 
@@ -219,7 +219,7 @@ idx = 4 # completion ratio by 4 + 1 prompts
 MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio).attach(inferencer, f'completion_ratio_intersection_{idx + 1}')
 MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio_union).attach(inferencer, f'completion_ratio_union_{idx + 1}')
 MetricsLambda(partial(back_transform, idx=idx), average_reduction_ratio).attach(inferencer, f'reduction_ratio_{idx + 1}')
-Average(output_transform=partial(max_gamma_metric, fdim=config.fdim, target_gamma=2, save_pos_examples=True)).attach(inferencer, f'max_gamma_contains_{2}')
+Average(output_transform=partial(max_gamma_metric, fdim=config.fdim, target_gamma=2, save_pos_examples=True, n_proc=10)).attach(inferencer, f'max_gamma_contains_{2}')
 ## LOGGING
 inferencer.add_event_handler(Events.COMPLETED, partial(log_wandb, prefix=config.inference['log_prefix']))
 if config.inference['save_best']:
@@ -247,19 +247,21 @@ if scheduler_use:
 
 # RUN VALIDATION
 trainer.add_event_handler(
-    Events.ITERATION_COMPLETED(every=config.validation['every']),
+    Events.EPOCH_COMPLETED,
+    # Events.ITERATION_COMPLETED(every=config.validation['every']),
     lambda: validator.run(validation_loader)
 )
 
 # RUN INFERENCE
 trainer.add_event_handler(
-    Events.ITERATION_COMPLETED(every=config.inference['every']),
+    Events.EPOCH_COMPLETED,
+    # Events.ITERATION_COMPLETED(every=config.inference['every']),
     lambda: inferencer.run(inference_loader)
 )
 
 # START TRAINING
 trainer.run(train_loader,
-            epoch_length=config.train['epoch_length'],
+            # epoch_length=config.train['epoch_length'],
             max_epochs=config.train['max_epochs'])
 
 
