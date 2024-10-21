@@ -2,3 +2,4 @@ __pycache__
 wandb
 training_generated_words
 env.json
+wandb_api.txt

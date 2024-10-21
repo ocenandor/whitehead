@@ -1,7 +1,4 @@
-packaging==24.1
 wheel==0.44.0
-torch==2.4.1+cu121
-pybind11==2.13.6
 accelerate==0.27.2
 appdirs==1.4.4
 asttokens==2.4.1
@@ -22,7 +19,6 @@ exceptiongroup==1.2.0
 executing==2.0.1
 fast-bleu==0.0.90
 filelock==3.13.1
-flash-attn==2.5.3
 fonttools==4.49.0
 fsspec==2023.12.2
 gitdb==4.0.11
@@ -104,9 +100,11 @@ tqdm==4.66.1
 traitlets==5.14.1
 transformers==4.37.1
 triton==3.0.0
+torch==2.4.1+cu121
 typing_extensions==4.9.0
 tzdata==2024.1
 urllib3==2.1.0
 wandb==0.16.3
 wcwidth==0.2.13
 widgetsnbextension==4.0.10
+flash-attn==2.5.3
