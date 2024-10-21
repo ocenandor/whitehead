@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import wandb
+import subprocess
 from configs.utils import load_config, selective_merge, set_default_config
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Engine, Events
@@ -34,8 +35,36 @@ from lming.utils import (checkpoints_path, download_artifact, from_tensor,
                          to_tensor)
 
 
+def get_available_gpus(min_vram_gb=20):
+    # Execute the nvidia-smi command to get GPU memory usage
+    result = subprocess.check_output(['nvidia-smi', '--query-gpu=memory.free', '--format=csv,nounits,noheader'])
+    free_memory = [int(x) for x in result.decode('utf-8').strip().split('\n')]
+    
+    # Check for GPUs with enough free memory
+    available_gpus = [i for i, mem in enumerate(free_memory) if mem >= min_vram_gb * 1024]  # convert GB to MB
+    return available_gpus
+
+def set_device_with_sufficient_memory(min_vram_gb=20):
+    available_gpus = get_available_gpus(min_vram_gb)
+    
+    if len(available_gpus) > 0:
+        # Set the first available GPU with enough memory
+        device = torch.device(f'cuda:{available_gpus[0]}')
+        torch.cuda.set_device(device)
+        print(f'Set GPU {available_gpus[0]} with {min_vram_gb}GB available memory as device.')
+    else:
+        # Fall back to CPU if no GPU is available
+        device = torch.device('cpu')
+        print(f'No GPUs with at least {min_vram_gb}GB available memory. Falling back to CPU.')
+    
+    return device
+
+# Set the device and make it available globally
+device = set_device_with_sufficient_memory()
+
+
 def train(config=None):
-    config = load_config('configs/config.json', device='cuda' if torch.cuda.is_available() else 'cpu')
+    config = load_config('configs/config.json', device=device)
 
     with wandb.init(config=config):
         config = wandb.config
