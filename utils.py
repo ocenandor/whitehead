@@ -35,53 +35,17 @@ def get_slice(array, slice):
     if isinstance(slice, float): return array[:int(len(array) * slice)]
     assert False, "Unknown `slice` type"
 
-def train_collate_fn(batch, tokenizer, fdim):
-    words = list(map(lambda x: x['word_str'], batch))
-    multilabels = list(map(lambda x: x['multilabel'], batch))
-    
-    batch = to_tensor(words, tokenizer, padding = True, 
-        prompt_multilabels = multilabels, prompt_strategy_fdim = fdim
-    )
-
-    batch['labels'] = batch['input_ids'].clone()
-    batch['input_ids'] = batch['input_ids']
-    batch['attention_mask'] = batch['attention_mask']
-
-    # Avoid predicting <pad>
-    batch['labels'][batch['attention_mask'] == 0] = -100
-    # Avoid predicting prompt
-    batch['labels'][:, 1:1 + fdim + 1 + 1] = -100
-
-    return batch
-
-def inference_collate_fn(batch, tokenizer, fdim):
-    words = list(map(lambda x: x['word_str'], batch))
-
-    multilabels = (2 << (fdim + 1)) - 1
-    
-    batch = to_tensor(
-        words, tokenizer = tokenizer,
-        padding = True, only_input_ids=True, strip_eos_token=True,
-        prompt_multilabels = multilabels, prompt_strategy_fdim = fdim,
-    )
-
-    return {
-        "prefixes": words,
-        "inputs": batch
-    }
-
-def transform_completion_ratio(x, fdim=3, max_shots=5, closures=None, union=False):
-    outputs = batch_few_shot_completion_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=closures, union=union)
+def transform_completion_ratio(x, fdim=3, max_shots=5, union=False):
+    outputs = batch_few_shot_completion_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=x['closures'], union=union)
     return torch.tensor(list(outputs.values())).reshape(1, -1)
 
-def transform_reduction_ratio(x, fdim=3, max_shots=5, closures=None):
-    outputs = batch_few_shot_reduction_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=closures)
+def transform_reduction_ratio(x, fdim=3, max_shots=5):
+    outputs = batch_few_shot_reduction_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=x['closures'])
     outputs = {k: v for k, v in outputs.items() if k.startswith('mean')}
     return torch.tensor(list(outputs.values())).reshape(1, -1)
 
 def back_transform(x, idx):
     return x[idx].item()
-
 
 def inverse(arr):
     arr = np.array(arr)
@@ -215,3 +179,43 @@ def completion_ratio_R(output_words):
     if is_from_normal_closure(from_string(w), closure=r):
       result = result + 1
   return result / len(output_words['outputs'])
+
+
+def multi_ratios_collate_fn(batch, tokenizer):
+    batch = [el['word_str'] for el in batch]
+    batch = tokenizer(batch, padding=True, return_tensors='pt', return_token_type_ids=False)
+    batch['labels'] = batch['input_ids'].clone()
+    batch['labels'][batch['attention_mask'] == 0] = -100
+    return batch
+
+def multi_ratios_collate_fn_inference(batch, tokenizer, tab=3):
+    colon_indices = [el['word_str'].rfind(':') for el in batch]
+    closures = [el['closures'] for el in batch]
+    batch = [el['word_str'][:colon_indices[i] + 1] + ' '.join(el['word_str'][colon_indices[i] + 1:].split()[:tab]) for i, el in enumerate(batch)]
+    batch = tokenizer(batch, padding=True, return_tensors='pt',
+                      return_token_type_ids=False, padding_side='left')
+    batch['input_ids'] = batch['input_ids'][:, :-1]
+    batch['attention_mask'] = batch['attention_mask'][:, :-1]
+    batch['closures'] = list(zip(*closures))
+    for i in range(len(batch['closures'])):
+        batch['closures'][i] = list(map(from_string, batch['closures'][i]))
+    return batch
+
+def train_collate_fn(batch, tokenizer):
+    batch = [el['word_str'] for el in batch]
+    batch = tokenizer(batch, padding=True, return_tensors='pt', return_token_type_ids=False)
+    batch['labels'] = batch['input_ids'].clone()
+    batch['labels'][batch['attention_mask'] == 0] = -100
+    return batch
+
+def inference_collate_fn(batch_, tokenizer):
+    closures = [el['closures'] for el in batch_]
+    batch = [el['word_str'] for el in batch_]
+    batch = tokenizer(batch, padding=False, return_tensors='pt',
+                      return_token_type_ids=False, padding_side='left')
+    batch['input_ids'] = batch['input_ids'][:, :-1] # delete eof
+    batch['attention_mask'] = batch['attention_mask'][:, :-1]
+    batch['closures'] = list(zip(*closures))
+    for i in range(len(batch['closures'])):
+        batch['closures'][i] = list(map(from_string, batch['closures'][i]))
+    return batch

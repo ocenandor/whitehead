@@ -1,0 +1,19 @@
+{
+"name": "sweep_lr_warmup",
+"method": "grid",
+"metric": {"goal": "maximize", "name": "test/completion_ratio_5"},
+
+"parameters":{
+    "optimizer": {
+        "parameters": {
+            "lr": {"values": [0.01, 0.001, 0.0001, 0.00001]}
+        }
+    },
+    "scheduler": {
+        "parameters": {
+            "warmup_duration": {"values": [300, 1000]}
+        }
+    }
+}
+
+}

@@ -1,9 +1,9 @@
 {
-    "fdim": 2,
+    "fdim": 3,
     "verbose": 2,
     "mlserver": 2,
-    "dataset_name": "fdim-2-whitehead:v0",
-    "model_name": "gpt-2-fdim-2:v3",
+    "dataset_name": "fdim-3-whitehead:v2",
+    "model_name": "gpt-2-fdim-3:v0",
     "device": "cuda",
     "dtype": "float32",
     "train": {
@@ -14,16 +14,16 @@
     "validation": {
       "every": 10,
       "log_every": 10,
-      "dataset_size": 0.01,
+      "dataset_size": 0.0,
       "epoch_length": 50,
-      "batch_size": 1024
+      "batch_size": 512
     },
     "inference": {
       "dataset_filename": "test.pkl",
       "every": 10,
       "save_best": true,
       "log_prefix": "test",
-      "dataset_size": 0.33,
+      "dataset_size": null,
       "batch_size": 1536,
       "max_shots": 5,
       "save_dirname": "test",
@@ -54,7 +54,11 @@
         "y",
         "n",
         ":",
-        "<s>"
+        "<s>",
+        "<pad>",
+        "[",
+        "]",
+        ","
       ],
       "num_return_sequences": 5,
       "do_sample": true

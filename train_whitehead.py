@@ -17,10 +17,8 @@ from torch.utils.data import DataLoader
 from transformers import (AutoConfig, AutoModelForCausalLM,
                           PreTrainedTokenizerFast)
 from utils import (back_transform, get_slice, load_external_module,
-                   max_gamma_metric, train_collate_fn,
+                   max_gamma_metric, train_collate_fn, inference_collate_fn,
                    transform_completion_ratio, transform_reduction_ratio)
-
-# load_external_module('lming', '/main/whitehead/lming/__init__.py')
 
 from lming.optimization import build_optimizer, build_scheduler
 from lming.utils import checkpoints_path, download_artifact, from_tensor
@@ -76,15 +74,15 @@ print(f'Train Dataset of size: {len(train_dataset)}. Validation Dataset of size:
 
 train_loader = DataLoader(
     train_dataset, batch_size=config.train['batch_size'],
-    shuffle=True, num_workers=1, collate_fn=partial(train_collate_fn, tokenizer=tokenizer, fdim=config.fdim)
+    shuffle=True, num_workers=1, collate_fn=partial(train_collate_fn, tokenizer=tokenizer)
     )
 validation_loader = DataLoader(
     validation_dataset, batch_size=config.validation['batch_size'],
-    shuffle=False, collate_fn=partial(train_collate_fn, tokenizer=tokenizer, fdim=config.fdim)
+    shuffle=False, collate_fn=partial(train_collate_fn, tokenizer=tokenizer)
     )
 inference_loader = DataLoader(
     test_dataset, batch_size=config.inference['batch_size'], num_workers=1,
-    shuffle=False, collate_fn=partial(train_collate_fn, tokenizer=tokenizer, fdim=config.fdim)
+    shuffle=False, collate_fn=partial(inference_collate_fn, tokenizer=tokenizer)
     )
 
 learnable_parameters = list(filter(lambda p: p.requires_grad, model.parameters()))
@@ -145,17 +143,15 @@ generation_config['suppress_tokens'] = tokenizer.convert_tokens_to_ids(generatio
 
 def inference(engine, batch):
     model.eval()
-    for k, v in batch.items():
-        batch[k] = v[:, :1 + config.fdim + 1 + 1 + config.inference['prefix_length']] # in config
-    # for key, value in batch.items(): #word
-    #     batch[key] = value.to(device)
-    
+    n = generation_config['num_return_sequences']
     with torch.no_grad():
+        closures = batch.pop('closures')
         result = model.generate(**batch.to(device), **generation_config)
         decodes = from_tensor(result.cpu(), tokenizer=tokenizer)
 
     return {
-        'outputs': decodes
+        'outputs': decodes,
+        'closures': [[el for el in subclosure for _ in range(n)] for subclosure in closures]
     }
 # IGNITE ENGINES
 trainer = Engine(train)
@@ -168,10 +164,14 @@ def log_wandb(engine, prefix):
 
 # IGNITE METRICS & WANDB LOGGING
 ## DEFINE CLOSURES
-CLOSURES = [
-    [1, 1, 1],
-    [-1, -2, 1, 2],
-    ]
+# CLOSURES = [
+#     [1, 1, 1],
+#     [-1, -2, 1, 2],
+#     ]
+# CLOSURES = [
+#     [-1, 2, 2, 1, -2, -2, -2],
+#     [-2, 1, 1, 2, -1, -1, -1]
+    # ]
 ## TRAIN METRICS
 RunningAverage(output_transform=lambda x: x['loss']).attach(trainer, 'running_loss')
 ## LOGGING
@@ -197,27 +197,24 @@ average_completion_ratio = Average(
     output_transform=partial(transform_completion_ratio,
                              fdim=config.fdim,
                              max_shots=config.inference['max_shots'],
-                             closures=CLOSURES,
                              union=False)
     )
 
-average_completion_ratio_union = Average(
-    output_transform=partial(transform_completion_ratio,
-                             fdim=config.fdim,
-                             max_shots=config.inference['max_shots'],
-                             closures=CLOSURES,
-                             union=True)
-    )
+# average_completion_ratio_union = Average(
+#     output_transform=partial(transform_completion_ratio,
+#                              fdim=config.fdim,
+#                              max_shots=config.inference['max_shots'],
+#                              union=True)
+#     )
 
 average_reduction_ratio = Average(
     output_transform=partial(transform_reduction_ratio,
                              fdim=config.fdim,
-                             max_shots=config.inference['max_shots'],
-                             closures=CLOSURES)
+                             max_shots=config.inference['max_shots'])
 )
-idx = 4 # completion ratio by 4 + 1 prompts
+idx = 4 # completion ratio by (idx + 1) generated prompts
 MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio).attach(inferencer, f'completion_ratio_intersection_{idx + 1}')
-MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio_union).attach(inferencer, f'completion_ratio_union_{idx + 1}')
+# MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio_union).attach(inferencer, f'completion_ratio_union_{idx + 1}')
 MetricsLambda(partial(back_transform, idx=idx), average_reduction_ratio).attach(inferencer, f'reduction_ratio_{idx + 1}')
 Average(output_transform=partial(max_gamma_metric, fdim=config.fdim, target_gamma=2, save_pos_examples=True, n_proc=10)).attach(inferencer, f'max_gamma_contains_{2}')
 ## LOGGING
@@ -246,11 +243,11 @@ if scheduler_use:
 )
 
 # RUN VALIDATION
-trainer.add_event_handler(
-    Events.EPOCH_COMPLETED,
-    # Events.ITERATION_COMPLETED(every=config.validation['every']),
-    lambda: validator.run(validation_loader)
-)
+# trainer.add_event_handler(
+#     Events.EPOCH_COMPLETED,
+#     # Events.ITERATION_COMPLETED(every=config.validation['every']),
+#     lambda: validator.run(validation_loader)
+# )
 
 # RUN INFERENCE
 trainer.add_event_handler(

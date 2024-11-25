@@ -17,10 +17,7 @@ from tqdm.auto import tqdm
 
 def batch_few_shot_completion_ratio(outputs, fdim=3, max_shots=5, closures=None, union=False):
     n = len(outputs)
-    
-    if closures is None:
-        closures = [wu_closure(fdim, idx) for idx in range(fdim + 1)]
-    
+
     x = np.array([batch_magnus_is_from_normal_closure(outputs, closure, n_proc=10) for closure in closures])
     x = x.transpose(1, 0).reshape(n // max_shots, max_shots, len(closures))
     if union:
@@ -36,10 +33,6 @@ def batch_few_shot_completion_ratio(outputs, fdim=3, max_shots=5, closures=None,
 
 def batch_few_shot_reduction_ratio(outputs, fdim=3, max_shots=5, closures=None):
     n = len(outputs)
-    
-    if closures is None:
-        closures = [wu_closure(fdim, idx) for idx in range(fdim + 1)]
-    
     x = np.array([list(map(len, batch_magnus_reduce_modulo_normal_closure(outputs, closure, n_proc=10))) for closure in closures])
     x = x.transpose(1, 0).reshape(n // max_shots, max_shots, -1)
     

@@ -104,9 +104,9 @@ def from_tensor(tensor, tokenizer, **kwargs):
     
     from_string_kwargs = remove_prefix('from_string', kwargs)
     
-    kwargs['skip_special_tokens'] = kwargs.get('skip_special_tokens', True)
+    kwargs['skip_special_tokens'] = False
     strings = tokenizer.batch_decode(tensor, **kwargs)
-    
+    strings = [el.split(':')[-1].split('</s>')[0] for el in strings]
     return batch_from_string(strings, **from_string_kwargs)
 
 
@@ -125,7 +125,7 @@ def download_artifact(artifact_name):
     download_path = environ.get('WANDB_DIR', None)
     if not download_path is None: download_path = f'{download_path}/{artifact_name}'
 
-    return wandb.run.use_artifact(artifact_name).download(root = download_path)
+    return wandb.run.use_artifact(artifact_name).download(root=download_path)
 
 
 def build_optimizer(parameters, name, **kwargs):
