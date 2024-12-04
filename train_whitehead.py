@@ -197,7 +197,8 @@ average_completion_ratio = Average(
     output_transform=partial(transform_completion_ratio,
                              fdim=config.fdim,
                              max_shots=config.inference['max_shots'],
-                             union=False)
+                             union=False,
+                             n_proc=10)
     )
 
 # average_completion_ratio_union = Average(
@@ -210,17 +211,21 @@ average_completion_ratio = Average(
 average_reduction_ratio = Average(
     output_transform=partial(transform_reduction_ratio,
                              fdim=config.fdim,
-                             max_shots=config.inference['max_shots'])
+                             max_shots=config.inference['max_shots'],
+                             n_proc=10)
 )
 idx = 4 # completion ratio by (idx + 1) generated prompts
 MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio).attach(inferencer, f'completion_ratio_intersection_{idx + 1}')
 # MetricsLambda(partial(back_transform, idx=idx), average_completion_ratio_union).attach(inferencer, f'completion_ratio_union_{idx + 1}')
-MetricsLambda(partial(back_transform, idx=idx), average_reduction_ratio).attach(inferencer, f'reduction_ratio_{idx + 1}')
-Average(output_transform=partial(max_gamma_metric, fdim=config.fdim, target_gamma=2, save_pos_examples=True, n_proc=10)).attach(inferencer, f'max_gamma_contains_{2}')
+# MetricsLambda(partial(back_transform, idx=idx), average_reduction_ratio).attach(inferencer, f'reduction_ratio_{idx + 1}')
+# Average(output_transform=partial(max_gamma_metric, fdim=config.fdim, target_gamma=2, save_pos_examples=True, n_proc=10)).attach(inferencer, f'max_gamma_contains_{2}')
 ## LOGGING
 inferencer.add_event_handler(Events.COMPLETED, partial(log_wandb, prefix=config.inference['log_prefix']))
 if config.inference['save_best']:
-    for score_name in [config.inference['score_name'], "max_gamma_contains_2"]:
+    for score_name in [
+        config.inference['score_name'],
+        # "max_gamma_contains_2"
+        ]:
         best_checkpoint = ModelCheckpoint(
             dirname=checkpoints_path() / config.inference['save_dirname'],
             score_name=score_name, n_saved=2,
