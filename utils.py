@@ -35,12 +35,12 @@ def get_slice(array, slice):
     if isinstance(slice, float): return array[:int(len(array) * slice)]
     assert False, "Unknown `slice` type"
 
-def transform_completion_ratio(x, fdim=3, max_shots=5, union=False):
-    outputs = batch_few_shot_completion_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=x['closures'], union=union)
+def transform_completion_ratio(x, fdim=3, max_shots=5, union=False, n_proc=10):
+    outputs = batch_few_shot_completion_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=x['closures'], union=union, n_proc=n_proc)
     return torch.tensor(list(outputs.values())).reshape(1, -1)
 
-def transform_reduction_ratio(x, fdim=3, max_shots=5):
-    outputs = batch_few_shot_reduction_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=x['closures'])
+def transform_reduction_ratio(x, fdim=3, max_shots=5, n_proc=10):
+    outputs = batch_few_shot_reduction_ratio(x['outputs'], fdim=fdim, max_shots=max_shots, closures=x['closures'], n_proc=n_proc)
     outputs = {k: v for k, v in outputs.items() if k.startswith('mean')}
     return torch.tensor(list(outputs.values())).reshape(1, -1)
 
