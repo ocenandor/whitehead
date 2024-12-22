@@ -18,3 +18,5 @@ python setup.py install
 2. Инференс модели с вспомогательными функциями
 3. Если модель новая, её конфиг надо закинуть на wandb
 
+### Optimization Methods in Machine Learning Course
+Experiment template file is [007 notebook](notebooks/007_optimization_experiments.ipynb)
