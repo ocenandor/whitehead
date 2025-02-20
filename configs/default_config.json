@@ -72,7 +72,6 @@
     }
   },
   "generation": {
-    "max_length": 120,
     "suppress_tokens": [
       "[",
       "]",

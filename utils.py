@@ -12,7 +12,7 @@ import torch
 from torch import nn
 
 from freegroup.derivatives import max_gamma_contains
-from freegroup.tools import normalize
+from freegroup.tools import normalize, batch_magnus_is_from_normal_closure
 
 
 def load_external_module(module_name, path):
@@ -201,21 +201,62 @@ def multi_ratios_collate_fn_inference(batch, tokenizer, tab=3):
         batch['closures'][i] = list(map(from_string, batch['closures'][i]))
     return batch
 
-def train_collate_fn(batch, tokenizer):
-    batch = [el['word_str'] for el in batch]
+def train_collate_fn(batch, tokenizer, key='word_str'):
+    batch = [el[key] for el in batch]
     batch = tokenizer(batch, padding=True, return_tensors='pt', return_token_type_ids=False)
     batch['labels'] = batch['input_ids'].clone()
     batch['labels'][batch['attention_mask'] == 0] = -100
     return batch
 
-def inference_collate_fn(batch_, tokenizer):
-    closures = [el['closures'] for el in batch_]
-    batch = [el['word_str'] for el in batch_]
-    batch = tokenizer(batch, padding=False, return_tensors='pt',
+def to_string(word):
+    return ' '.join(map(str, word))
+
+def construct_prompt_with_word_limit(el, label=None, prefix_length=3):
+    if label is None:
+        label = el['prefix']
+    return f"{label}:{to_string(el['relations'][0])},{to_string(el['relations'][1])}:{to_string(el['word'][:prefix_length])}"
+
+def inference_collate_fn(batch_, tokenizer, prefix_length=3, label=None):
+    closures = [el['relations'] for el in batch_]
+    prefixes = [el['prefix'] for el in batch_] if label is None else [label for el in batch_] 
+    info_tags = [el.get('test_2', 'no_info') for el in batch_]
+    batch = [construct_prompt_with_word_limit(el, label=label, prefix_length=prefix_length) for el in batch_]
+    batch = tokenizer(batch, padding=True, return_tensors='pt',
                       return_token_type_ids=False, padding_side='left')
     batch['input_ids'] = batch['input_ids'][:, :-1] # delete eof
     batch['attention_mask'] = batch['attention_mask'][:, :-1]
-    batch['closures'] = list(zip(*closures))
-    for i in range(len(batch['closures'])):
-        batch['closures'][i] = list(map(from_string, batch['closures'][i]))
+    batch['relations'] = closures
+    batch['prefixes'] = prefixes
+    batch['info_tags'] = info_tags
     return batch
+
+def str_prefix2bool(prefix):
+    res = []
+    for s in prefix:
+        if s == 'y':
+            res.append(True)
+        else:
+            res.append(False)
+    return res
+
+def completion_ratio_v2_full_match(x):
+    preds, gts = x['preds'], x['gts']
+    return (preds==gts).min(axis=1).mean()
+
+def completion_ratio_v2_1pos_match(x):
+    preds, gts = x['preds'], x['gts']
+    return (preds[:, 0] == gts[:, 0])[np.where(gts[:, 0])].mean()
+
+def completion_ratio_v2_2pos_match(x):
+    preds, gts = x['preds'], x['gts']
+    return (preds[:, 1] == gts[:, 1])[np.where(gts[:, 1])].mean()
+
+def completion_ratio_v2_any_pos_match(x):
+    preds, gts = x['preds'], x['gts']
+    pos1 = (preds[:, 0] == gts[:, 0])[np.where(gts[:, 0])]
+    pos2 = (preds[:, 1] == gts[:, 1])[np.where(gts[:, 1])]
+    return (pos1 | pos2).mean()
+
+def calculate_nan_number(x):
+    return np.isnan(x['preds']).mean()
+
