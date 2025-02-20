@@ -2,3 +2,12 @@ __pycache__
 wandb
 training_generated_words
 drafts
+data
+experiments
+notebooks/log
+tmp_log
+runs
+pavel-tikhomirov-runs
+**nohup**
+relations_time_experiment.pkl
+**.log
