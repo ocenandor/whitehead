@@ -203,9 +203,11 @@ def multi_ratios_collate_fn_inference(batch, tokenizer, tab=3):
 
 def train_collate_fn(batch, tokenizer, key='word_str'):
     batch = [el[key] for el in batch]
-    batch = tokenizer(batch, padding=True, return_tensors='pt', return_token_type_ids=False)
+    batch = tokenizer(batch, padding=True, return_tensors='pt',
+                      return_token_type_ids=False, padding_side='left')
     batch['labels'] = batch['input_ids'].clone()
     batch['labels'][batch['attention_mask'] == 0] = -100
+    # batch['attention_mask'][:, 0] = 1
     return batch
 
 def to_string(word):
